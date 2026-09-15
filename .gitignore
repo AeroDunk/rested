@@ -1,0 +1,5 @@
+chrome-profile/
+.claude/scheduled_tasks.lock
+*.log
+.DS_Store
+Thumbs.db

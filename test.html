@@ -1,0 +1,9 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Tests</title>
+<pre id="out">RUNNING</pre>
+<script type="module">
+import { runAll } from './test/harness.js';
+import './test/smoke.test.js';
+runAll(document.getElementById('out'));
+</script>
