@@ -23,8 +23,8 @@ async function reload() {
 
 let rootEl = null;
 
-export async function navigate(route) {
-  setState({ route });
+export async function navigate(route, params = {}) {
+  setState({ route, params });
   await draw();
 }
 
@@ -40,7 +40,7 @@ async function draw() {
     return;
   }
   const views = await import('./views/index.js');
-  await views.render(rootEl, state.route);
+  await views.render(rootEl, state.route, state.params ?? {});
 }
 
 export async function mount(el) {

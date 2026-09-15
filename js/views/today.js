@@ -56,7 +56,7 @@ export async function render(container) {
     <button class="btn" id="primary">${primaryLabel(open, sug)}</button>
     <h2>Today</h2>
     ${todays.length === 0 ? '<p class="muted">Nothing logged yet.</p>' : ''}
-    ${todays.map((x) => `<div class="card">
+    ${todays.map((x) => `<div class="card" data-edit="${x.id}">
         <strong>${x.type === 'nap' ? 'Nap' : 'Night'}</strong>
         <span class="muted">${clock(new Date(x.startedAt))}${
           x.endedAt ? ' – ' + clock(new Date(x.endedAt)) : ' – in progress'}</span>
@@ -77,6 +77,9 @@ export async function render(container) {
 
   container.querySelectorAll('nav.tabs button').forEach((b) =>
     b.addEventListener('click', () => navigate(b.dataset.route)));
+
+  container.querySelectorAll('[data-edit]').forEach((el) =>
+    el.addEventListener('click', () => navigate('edit-sleep', { sleepId: el.dataset.edit })));
 
   clearInterval(timer);
   timer = setInterval(() => {
