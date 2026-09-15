@@ -54,3 +54,12 @@ test('flag text never uses banned words and never claims safety benefit', () => 
   ok(!all.includes('sids'));
   ok(!all.includes('safer'));
 });
+
+test('every flag carries a tier and a source, like other evidentiary claims', () => {
+  const low = detectFlags({ sleeps: nights(10, 8), band: BANDS['8-9'], now: NOW });
+  const high = detectFlags({ sleeps: nights(10, 18), band: BANDS['8-9'], now: NOW });
+  for (const f of [...low, ...high]) {
+    ok(!!f.tier, `expected a tier on flag ${f.id}`);
+    ok(!!f.source, `expected a source on flag ${f.id}`);
+  }
+});

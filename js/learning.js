@@ -1,4 +1,4 @@
-import { active } from './model.js';
+import { active, localDayKey } from './model.js';
 
 const CAP = 45;
 
@@ -13,7 +13,18 @@ export function observedWakeWindows(sleeps) {
     const start = new Date(done[i].startedAt);
     const minutes = Math.round((start - prevEnd) / 60000);
     if (minutes <= 0 || minutes > 12 * 60) continue;
-    out.push({ beforeSleepId: done[i].id, minutes, mood: done[i].mood ?? null });
+
+    // Position within the local day: how many earlier sleeps that day
+    // already occurred. The first sleep of the day is position 0, the
+    // second is position 1, and so on. This lets callers distinguish the
+    // first-nap gap (anchored to a stable morning wake time) from later
+    // gaps, which are downstream of however the earlier naps went.
+    const dayKey = localDayKey(new Date(done[i].startedAt));
+    const position = done
+      .slice(0, i)
+      .filter((s) => localDayKey(new Date(s.startedAt)) === dayKey).length;
+
+    out.push({ beforeSleepId: done[i].id, minutes, mood: done[i].mood ?? null, position });
   }
   return out;
 }
@@ -33,8 +44,12 @@ function spread(values) {
 export function proposeAdjustment(sleeps, band, { minSamples = 8, minDeviation = 15 } = {}) {
   if (!band) return null;
 
+  // Only the first wake window of the day is a fair comparison against
+  // band.wakeWindows.first: it is anchored to a stable morning wake time,
+  // whereas later-in-day gaps depend on how the earlier naps went and
+  // compare against a different convention window entirely.
   const easy = observedWakeWindows(sleeps)
-    .filter((w) => w.mood === 'easy')
+    .filter((w) => w.mood === 'easy' && w.position === 0)
     .map((w) => w.minutes);
 
   if (easy.length < minSamples) return null;

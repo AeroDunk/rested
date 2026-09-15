@@ -24,6 +24,27 @@ function days(n, gapMin, mood = 'easy', startDay = 2) {
   return out;
 }
 
+// Builds `n` days where each day has multiple naps, one per entry in
+// `gaps` (the awake gap preceding that nap, chained from the previous
+// sleep's end). Lets a test construct on-convention multi-nap days to
+// check that position-within-day tagging isn't conflating nap slots.
+function daysMulti(n, gaps, mood = 'easy', startDay = 2) {
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const day = startDay + i;
+    out.push(night(`2026-09-${String(day - 1).padStart(2, '0')}T19:00:00`,
+      `2026-09-${String(day).padStart(2, '0')}T07:00:00`));
+    let prevEnd = new Date(2026, 8, day, 7, 0, 0);
+    for (const gap of gaps) {
+      const napStart = new Date(prevEnd.getTime() + gap * 60000);
+      const napEnd = new Date(napStart.getTime() + 60 * 60000);
+      out.push(nap(napStart.toISOString(), napEnd.toISOString(), mood));
+      prevEnd = napEnd;
+    }
+  }
+  return out;
+}
+
 test('computes the awake gap preceding each sleep', () => {
   const w = observedWakeWindows([
     night('2026-09-13T19:00:00', '2026-09-14T07:00:00'),
@@ -76,4 +97,9 @@ test('noisy data produces no proposal', () => {
   // interquartile spread exceeds the 90-minute stability limit.
   const mixed = [...days(5, 100, 'easy', 2), ...days(5, 240, 'easy', 12)];
   eq(proposeAdjustment(mixed, BANDS['8-9']), null);
+});
+
+test('on-convention multi-nap days do not spuriously propose a shift', () => {
+  const sleeps = daysMulti(12, [143, 173, 203], 'easy');
+  eq(proposeAdjustment(sleeps, BANDS['8-9']), null);
 });

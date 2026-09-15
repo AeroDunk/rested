@@ -45,8 +45,11 @@ export async function render(container) {
   const key = bandKey(now);
   const sug = suggest({ now, bandKey: key, sleeps: s.sleeps, adjustments: active(s.adjustments) });
   const flags = detectFlags({ sleeps: s.sleeps, band: BANDS[key], now });
-  const flagsHtml = flags.map((f) =>
-    `<div class="card notice"><p>${f.text}</p></div>`).join('');
+  const flagsHtml = flags.map((f) => `
+    <div class="card notice">
+      <span class="tier tier-${f.tier}">${tierLabel(f.tier)}</span>
+      <p>${f.text}</p>
+    </div>`).join('');
   const open = active(s.sleeps).find((x) => !x.endedAt);
 
   const todayKey = localDayKey(now);

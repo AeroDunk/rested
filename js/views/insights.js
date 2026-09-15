@@ -46,7 +46,13 @@ export async function render(container) {
 
   const proposal = band ? proposeAdjustment(s.sleeps, band) : null;
   const activeAdj = s.adjustments.find((a) => a.active && !a.deletedAt);
-  const proposalCard = proposal && !activeAdj ? `
+  // A rejection sticks until the observed pattern changes enough to move
+  // the proposed offset by >5 min. Without this, the same rejected
+  // suggestion re-derives from the same data on every render and the
+  // dismissed card reappears immediately.
+  const rejected = proposal && s.adjustments.some((a) => !a.deletedAt && !a.active
+    && Math.abs(a.offsetMinutes - proposal.offsetMinutes) < 5);
+  const proposalCard = proposal && !activeAdj && !rejected ? `
     <div class="card"><h2>Something we noticed</h2>
       <p>His easy naps have been following about ${Math.round(proposal.observedMedian)} minutes
         awake, rather than the ${Math.round(proposal.conventionMid)} minutes typical for his age.
@@ -77,16 +83,28 @@ export async function render(container) {
   const acc = container.querySelector('#accept-adj');
   if (acc) {
     acc.addEventListener('click', async () => {
+      const now = new Date().toISOString();
+      // Deactivate any prior active wakeWindow adjustment first, so the
+      // engine (which picks the first active match) never has more than
+      // one active record to choose between. History is kept, just marked
+      // inactive, for future analysis.
+      const priorActive = s.adjustments.filter(
+        (a) => a.active && a.kind === 'wakeWindow' && !a.deletedAt);
+      for (const a of priorActive) {
+        await put(s.db, 'adjustments', { ...a, active: false, updatedAt: now });
+      }
       await put(s.db, 'adjustments', {
         id: newId(), kind: 'wakeWindow', offsetMinutes: proposal.offsetMinutes,
-        ageBandAtCreation: key, acceptedAt: new Date().toISOString(), active: true,
-        createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), deletedAt: null,
+        ageBandAtCreation: key, acceptedAt: now, active: true,
+        createdAt: now, updatedAt: now, deletedAt: null,
       });
       location.reload();
     });
     container.querySelector('#reject-adj').addEventListener('click', async () => {
       await put(s.db, 'adjustments', {
-        id: newId(), kind: 'wakeWindow', offsetMinutes: 0,
+        // Store the actual rejected offset (not 0) so the gate above can
+        // recognize "essentially this same suggestion" on a later render.
+        id: newId(), kind: 'wakeWindow', offsetMinutes: proposal.offsetMinutes,
         ageBandAtCreation: key, acceptedAt: new Date().toISOString(), active: false,
         createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), deletedAt: null,
       });
