@@ -1,10 +1,10 @@
-const CACHE = 'rested-v2';
+const CACHE = 'rested-v3';
 const SHELL = [
   './', './index.html', './css/app.css', './manifest.webmanifest',
   './js/app.js', './js/age.js', './js/sleep-data.js', './js/model.js',
-  './js/engine.js', './js/store.js',
+  './js/engine.js', './js/store.js', './js/history-data.js',
   './js/views/index.js', './js/views/tabs.js', './js/views/onboarding.js',
-  './js/views/today.js', './js/views/edit-sleep.js',
+  './js/views/today.js', './js/views/edit-sleep.js', './js/views/history.js',
   './icons/icon-192.png', './icons/icon-512.png',
 ];
 

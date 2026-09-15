@@ -60,3 +60,11 @@ nav.tabs button {
 nav.tabs button[aria-current="page"] { background: var(--accent); color: var(--accent-text); }
 .notice { border-left: 3px solid var(--accent); padding-left: 12px; }
 [hidden] { display: none !important; }
+
+.daybar {
+  position: relative; height: 22px; margin: 10px 0;
+  background: var(--bg); border: 1px solid var(--line); border-radius: 6px; overflow: hidden;
+}
+.daybar .seg { position: absolute; top: 0; bottom: 0; }
+.seg-nap { background: var(--accent); opacity: 0.75; }
+.seg-night { background: var(--tier-strong); opacity: 0.6; }
