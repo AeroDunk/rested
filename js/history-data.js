@@ -16,6 +16,16 @@ export function groupByDay(sleeps, milestones) {
     const mins = durationMinutes(s) ?? 0;
     if (s.type === 'night') d.nightMin += mins; else d.dayMin += mins;
     d.totalMin += mins;
+
+    // A sleep that ends on a later local day than it started is also added
+    // to the end day's sleeps array (but not its totals) so dayBarSegments
+    // can clip and render the morning portion on that day's bar too.
+    if (s.endedAt) {
+      const endKey = localDayKey(new Date(s.endedAt));
+      if (endKey !== key) {
+        touch(endKey).sleeps.push(s);
+      }
+    }
   }
   for (const m of active(milestones)) {
     touch(localDayKey(new Date(m.observedAt))).milestones.push(m);

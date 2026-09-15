@@ -24,8 +24,13 @@ test('totals day and night sleep separately', () => {
 
 test('a night sleep is attributed to the day it started', () => {
   const g = groupByDay([night('2026-09-13T19:00:00', '2026-09-14T07:00:00')], []);
-  eq(g[0].dayKey, '2026-09-13');
-  eq(g[0].nightMin, 720);
+  // Note: the overnight sleep also gets an end-day entry (for its morning
+  // bar segment — see the day-bar test below), so look up the start day by
+  // key rather than assuming it is g[0].
+  const startDay = g.find((d) => d.dayKey === '2026-09-13');
+  ok(startDay, 'expected a start day entry');
+  eq(startDay.dayKey, '2026-09-13');
+  eq(startDay.nightMin, 720);
 });
 
 test('milestones land on their own day', () => {
@@ -58,4 +63,19 @@ test('bar segments are percentages of a 24 hour day', () => {
 test('a segment crossing midnight is clipped at the day boundary', () => {
   const segs = dayBarSegments([night('2026-09-14T23:00:00', '2026-09-15T07:00:00')], '2026-09-14');
   ok(segs[0].leftPct + segs[0].widthPct <= 100.01, 'segment must not overflow the bar');
+});
+
+test('an overnight sleep also appears in the following day\'s bar segments', () => {
+  const g = groupByDay([night('2026-09-13T19:00:00', '2026-09-14T07:00:00')], []);
+  const startDay = g.find((d) => d.dayKey === '2026-09-13');
+  const endDay = g.find((d) => d.dayKey === '2026-09-14');
+  ok(startDay, 'expected a start day entry');
+  ok(endDay, 'expected an end day entry');
+  ok(dayBarSegments(startDay.sleeps, '2026-09-13').length >= 1,
+    'start day should render a segment');
+  ok(dayBarSegments(endDay.sleeps, '2026-09-14').length >= 1,
+    'end day should render the morning portion');
+  // Totals stay attributed only to the start day:
+  eq(startDay.nightMin, 720);
+  eq(endDay.nightMin, 0);
 });
