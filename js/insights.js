@@ -1,5 +1,5 @@
 import { groupByDay } from './history-data.js';
-import { active } from './model.js';
+import { active, localDayKey } from './model.js';
 
 const ROUTINE_THRESHOLD = 5 / 7;
 
@@ -9,11 +9,19 @@ export function rollingAverages(sleeps, days = 14, now = new Date()) {
   const recent = active(sleeps).filter((s) => new Date(s.startedAt) >= cutoff);
   const grouped = groupByDay(recent, []);
 
-  if (grouped.length === 0) {
+  // groupByDay also creates an entry for the day an overnight sleep spills
+  // into, purely so the history view can render that morning's bar segment.
+  // That spillover-only entry carries zero minutes and isn't a day we
+  // actually have data for, so it must not be counted as a sampled day here
+  // — otherwise every overnight sleep silently drags the average down.
+  const primary = grouped.filter((d) =>
+    d.sleeps.some((s) => localDayKey(new Date(s.startedAt)) === d.dayKey));
+
+  if (primary.length === 0) {
     return { avgTotalMin: 0, avgDayMin: 0, avgNightMin: 0, avgNapCount: 0, sampleDays: 0 };
   }
-  const sum = (f) => grouped.reduce((a, d) => a + f(d), 0);
-  const n = grouped.length;
+  const sum = (f) => primary.reduce((a, d) => a + f(d), 0);
+  const n = primary.length;
   return {
     avgTotalMin: Math.round(sum((d) => d.totalMin) / n),
     avgDayMin: Math.round(sum((d) => d.dayMin) / n),

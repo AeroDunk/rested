@@ -3,6 +3,8 @@ import { getState, bandKey, navigate } from '../app.js';
 import { createSleep, durationMinutes, active, localDayKey } from '../model.js';
 import { put } from '../store.js';
 import { tabs } from './tabs.js';
+import { detectFlags } from '../flags.js';
+import { BANDS } from '../sleep-data.js';
 
 let timer = null;
 
@@ -42,6 +44,9 @@ export async function render(container) {
   const now = new Date();
   const key = bandKey(now);
   const sug = suggest({ now, bandKey: key, sleeps: s.sleeps, adjustments: active(s.adjustments) });
+  const flags = detectFlags({ sleeps: s.sleeps, band: BANDS[key], now });
+  const flagsHtml = flags.map((f) =>
+    `<div class="card notice"><p>${f.text}</p></div>`).join('');
   const open = active(s.sleeps).find((x) => !x.endedAt);
 
   const todayKey = localDayKey(now);
@@ -52,6 +57,7 @@ export async function render(container) {
   container.innerHTML = `
     ${tabs('today')}
     <h1>${s.child.name}</h1>
+    ${flagsHtml}
     <div class="card" id="suggestion">${suggestionHtml(sug, open, now)}</div>
     <button class="btn" id="primary">${primaryLabel(open, sug)}</button>
     <h2>Today</h2>
