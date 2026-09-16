@@ -45,12 +45,16 @@ export async function render(container) {
            + 'improve settling and night waking.'}</p>`;
 
   const proposal = band ? proposeAdjustment(s.sleeps, band) : null;
-  const activeAdj = s.adjustments.find((a) => a.active && !a.deletedAt);
+  const activeAdj = s.adjustments.find((a) => a.active && a.kind === 'wakeWindow' && !a.deletedAt);
   // A rejection sticks until the observed pattern changes enough to move
   // the proposed offset by >5 min. Without this, the same rejected
   // suggestion re-derives from the same data on every render and the
-  // dismissed card reappears immediately.
+  // dismissed card reappears immediately. Only records explicitly marked
+  // reason: 'rejected' count — a superseded-but-previously-accepted
+  // adjustment has the same {active: false, deletedAt: null} shape but
+  // should never suppress a new proposal.
   const rejected = proposal && s.adjustments.some((a) => !a.deletedAt && !a.active
+    && a.reason === 'rejected' && a.kind === 'wakeWindow'
     && Math.abs(a.offsetMinutes - proposal.offsetMinutes) < 5);
   const proposalCard = proposal && !activeAdj && !rejected ? `
     <div class="card"><h2>Something we noticed</h2>
@@ -91,11 +95,11 @@ export async function render(container) {
       const priorActive = s.adjustments.filter(
         (a) => a.active && a.kind === 'wakeWindow' && !a.deletedAt);
       for (const a of priorActive) {
-        await put(s.db, 'adjustments', { ...a, active: false, updatedAt: now });
+        await put(s.db, 'adjustments', { ...a, active: false, reason: 'superseded', updatedAt: now });
       }
       await put(s.db, 'adjustments', {
         id: newId(), kind: 'wakeWindow', offsetMinutes: proposal.offsetMinutes,
-        ageBandAtCreation: key, acceptedAt: now, active: true,
+        ageBandAtCreation: key, acceptedAt: now, active: true, reason: 'accepted',
         createdAt: now, updatedAt: now, deletedAt: null,
       });
       location.reload();
@@ -105,7 +109,7 @@ export async function render(container) {
         // Store the actual rejected offset (not 0) so the gate above can
         // recognize "essentially this same suggestion" on a later render.
         id: newId(), kind: 'wakeWindow', offsetMinutes: proposal.offsetMinutes,
-        ageBandAtCreation: key, acceptedAt: new Date().toISOString(), active: false,
+        ageBandAtCreation: key, acceptedAt: new Date().toISOString(), active: false, reason: 'rejected',
         createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), deletedAt: null,
       });
       location.reload();
