@@ -1,20 +1,7 @@
 import { getState, navigate } from '../app.js';
 import { put } from '../store.js';
-import { createWaking, softDelete, active, durationMinutes } from '../model.js';
-
-const two = (n) => String(n).padStart(2, '0');
-
-export function toLocalInputValue(date) {
-  return `${date.getFullYear()}-${two(date.getMonth() + 1)}-${two(date.getDate())}`
-    + `T${two(date.getHours())}:${two(date.getMinutes())}`;
-}
-
-export function fromLocalInputValue(str) {
-  const [d, t] = str.split('T');
-  const [y, mo, day] = d.split('-').map(Number);
-  const [h, mi] = t.split(':').map(Number);
-  return new Date(y, mo - 1, day, h, mi, 0, 0);
-}
+import { createWaking, softDelete, active } from '../model.js';
+import { formatTime, toLocalInputValue, fromLocalInputValue } from '../format.js';
 
 export async function render(container, { sleepId }) {
   const s = getState();
@@ -56,8 +43,8 @@ export async function render(container, { sleepId }) {
     <h2>Night wakings</h2>
     ${wakings.length === 0 ? '<p class="muted">None logged.</p>' : ''}
     ${wakings.map((w) => `<div class="card">
-      ${new Date(w.wokeAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-      ${w.backAsleepAt ? '– ' + new Date(w.backAsleepAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+      ${formatTime(new Date(w.wokeAt))}
+      ${w.backAsleepAt ? '– ' + formatTime(new Date(w.backAsleepAt)) : ''}
       <button class="btn secondary" data-del-waking="${w.id}">Remove</button>
     </div>`).join('')}
     <form id="addw">

@@ -5,14 +5,12 @@ import { put } from '../store.js';
 import { tabs } from './tabs.js';
 import { detectFlags } from '../flags.js';
 import { BANDS } from '../sleep-data.js';
+import { formatTime, toLocalInputValue, fromLocalInputValue } from '../format.js';
 
 let timer = null;
 
-const two = (n) => String(n).padStart(2, '0');
-const clock = (d) => `${two(d.getHours())}:${two(d.getMinutes())}`;
-
 export function formatWindow(start, end) {
-  return `${clock(start)} – ${clock(end)}`;
+  return `${formatTime(start)} – ${formatTime(end)}`;
 }
 
 export function formatCountdown(ms) {
@@ -57,29 +55,52 @@ export async function render(container) {
     .filter((x) => localDayKey(new Date(x.startedAt)) === todayKey)
     .sort((a, b) => new Date(a.startedAt) - new Date(b.startedAt));
 
+  const actionLabel = open ? 'Ended at' : 'Started at';
+  const actionTimeValue = toLocalInputValue(now);
+
   container.innerHTML = `
     ${tabs('today')}
     <h1>${s.child.name}</h1>
     ${flagsHtml}
     <div class="card" id="suggestion">${suggestionHtml(sug, open, now)}</div>
+    <label class="field"><span>${actionLabel}</span>
+      <input type="datetime-local" id="action-time" value="${actionTimeValue}"></label>
+    <p class="muted">Edit the time above if you're logging this after the fact.</p>
     <button class="btn" id="primary">${primaryLabel(open, sug)}</button>
+    <p id="action-err" class="muted" hidden></p>
     <h2>Today</h2>
     ${todays.length === 0 ? '<p class="muted">Nothing logged yet.</p>' : ''}
     ${todays.map((x) => `<div class="card" data-edit="${x.id}">
         <strong>${x.type === 'nap' ? 'Nap' : 'Night'}</strong>
-        <span class="muted">${clock(new Date(x.startedAt))}${
-          x.endedAt ? ' – ' + clock(new Date(x.endedAt)) : ' – in progress'}</span>
+        <span class="muted">${formatTime(new Date(x.startedAt))}${
+          x.endedAt ? ' – ' + formatTime(new Date(x.endedAt)) : ' – in progress'}</span>
         ${x.endedAt ? `<div class="muted">${durationMinutes(x)} min</div>` : ''}
       </div>`).join('')}`;
 
   container.querySelector('#primary').addEventListener('click', async () => {
     const st = getState();
     const current = active(st.sleeps).find((x) => !x.endedAt);
+    const timeInput = container.querySelector('#action-time');
+    const chosen = timeInput && timeInput.value
+      ? fromLocalInputValue(timeInput.value)
+      : new Date();
+    const iso = chosen.toISOString();
+    const err = container.querySelector('#action-err');
+
     if (current) {
-      await put(st.db, 'sleeps', { ...current, endedAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
+      if (chosen <= new Date(current.startedAt)) {
+        err.hidden = false;
+        err.textContent = 'End time needs to be after the start time.';
+        return;
+      }
+      await put(st.db, 'sleeps', {
+        ...current,
+        endedAt: iso,
+        updatedAt: new Date().toISOString(),
+      });
     } else {
       const type = sug.kind === 'bedtime' ? 'night' : 'nap';
-      await put(st.db, 'sleeps', createSleep({ type, startedAt: new Date().toISOString() }));
+      await put(st.db, 'sleeps', createSleep({ type, startedAt: iso }));
     }
     location.reload();
   });
@@ -106,7 +127,7 @@ function primaryLabel(open, sug) {
 function suggestionHtml(sug, open, now) {
   if (open) {
     return `<p class="muted">${open.type === 'nap' ? 'Napping' : 'Asleep'} since
-      ${clock(new Date(open.startedAt))}</p>`;
+      ${formatTime(new Date(open.startedAt))}</p>`;
   }
   if (sug.kind === 'unknown') {
     return '<p class="muted">Add his details to get suggestions.</p>';
