@@ -1,6 +1,6 @@
 import { suggest } from '../engine.js';
 import { getState, bandKey, navigate } from '../app.js';
-import { createSleep, durationMinutes, active, localDayKey } from '../model.js';
+import { createSleep, durationMinutes, active, localDayKey, softDelete } from '../model.js';
 import { put } from '../store.js';
 import { tabs } from './tabs.js';
 import { detectFlags } from '../flags.js';
@@ -67,6 +67,7 @@ export async function render(container) {
       <input type="datetime-local" id="action-time" value="${actionTimeValue}"></label>
     <p class="muted">Edit the time above if you're logging this after the fact.</p>
     <button class="btn" id="primary">${primaryLabel(open, sug)}</button>
+    ${open ? '<button class="btn secondary" id="cancel">Cancel — that was a mistake</button>' : ''}
     <p id="action-err" class="muted" hidden></p>
     <h2>Today</h2>
     ${todays.length === 0 ? '<p class="muted">Nothing logged yet.</p>' : ''}
@@ -104,6 +105,18 @@ export async function render(container) {
     }
     location.reload();
   });
+
+  const cancelBtn = container.querySelector('#cancel');
+  if (cancelBtn) {
+    cancelBtn.addEventListener('click', async () => {
+      const st = getState();
+      const current = active(st.sleeps).find((x) => !x.endedAt);
+      if (!current) return;
+      if (!confirm('Delete this in-progress sleep? This can\'t be undone.')) return;
+      await put(st.db, 'sleeps', softDelete(current));
+      location.reload();
+    });
+  }
 
   container.querySelectorAll('nav.tabs button').forEach((b) =>
     b.addEventListener('click', () => navigate(b.dataset.route)));
