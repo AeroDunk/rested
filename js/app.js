@@ -49,9 +49,14 @@ export async function mount(el) {
   await reload();
   await draw();
   if ('serviceWorker' in navigator) {
+    // Only reload on controllerchange when a controller ALREADY existed —
+    // i.e., this is a genuine update. The initial installation also fires
+    // controllerchange (from clients.claim in the SW's activate handler),
+    // and reloading there mid-onboarding would lose the user's form input.
+    const hadController = !!navigator.serviceWorker.controller;
     let refreshing = false;
     navigator.serviceWorker.addEventListener('controllerchange', () => {
-      if (refreshing) return;
+      if (!hadController || refreshing) return;
       refreshing = true;
       location.reload();
     });
