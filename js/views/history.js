@@ -1,6 +1,6 @@
 import { getState, navigate } from '../app.js';
 import { groupByDay, dayBarSegments } from '../history-data.js';
-import { createMilestone, active } from '../model.js';
+import { createMilestone, active, durationMinutes, localDayKey } from '../model.js';
 import { put } from '../store.js';
 import { tabs } from './tabs.js';
 import { formatTime } from '../format.js';
@@ -20,7 +20,11 @@ export async function render(container) {
     ${tabs('history')}
     <h1>History</h1>
     ${days.length === 0 ? '<p class="muted">Nothing logged yet.</p>' : ''}
-    ${days.map((d) => `
+    ${days.map((d) => {
+      const primarySleeps = active(d.sleeps)
+        .filter((s) => localDayKey(new Date(s.startedAt)) === d.dayKey)
+        .sort((a, b) => new Date(a.startedAt) - new Date(b.startedAt));
+      return `
       <div class="card">
         <strong>${d.dayKey}</strong>
         <div class="daybar" role="img" aria-label="Sleep across the day">
@@ -42,9 +46,22 @@ export async function render(container) {
           <span style="left:100%">12a</span>
         </div>
         <div class="muted">Day ${hm(d.dayMin)} · Night ${hm(d.nightMin)}</div>
+        ${primarySleeps.length === 0 ? '' : `
+          <ul class="sleep-list">
+            ${primarySleeps.map((x) => {
+              const started = formatTime(new Date(x.startedAt));
+              const ended = x.endedAt ? formatTime(new Date(x.endedAt)) : 'in progress';
+              const dur = x.endedAt ? ` <span class="muted">(${durationMinutes(x)} min)</span>` : '';
+              return `<li data-edit="${x.id}">
+                <strong>${x.type === 'nap' ? 'Nap' : 'Night'}</strong>
+                <span class="muted">${started} – ${ended}</span>${dur}
+              </li>`;
+            }).join('')}
+          </ul>`}
         ${d.milestones.map((m) =>
           `<div class="muted">★ ${MILESTONE_LABELS[m.kind]}</div>`).join('')}
-      </div>`).join('')}
+      </div>`;
+    }).join('')}
 
     <h2>Log a milestone</h2>
     <p class="muted">Babies often wake more in the weeks after learning something new,
@@ -73,4 +90,7 @@ export async function render(container) {
 
   container.querySelectorAll('nav.tabs button').forEach((b) =>
     b.addEventListener('click', () => navigate(b.dataset.route)));
+
+  container.querySelectorAll('[data-edit]').forEach((el) =>
+    el.addEventListener('click', () => navigate('edit-sleep', { sleepId: el.dataset.edit })));
 }

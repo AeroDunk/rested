@@ -1,4 +1,4 @@
-const CACHE = 'rested-v14';
+const CACHE = 'rested-v15';
 const SHELL = [
   './', './index.html', './css/app.css', './manifest.webmanifest',
   './js/app.js', './js/age.js', './js/sleep-data.js', './js/model.js',

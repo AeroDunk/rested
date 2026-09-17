@@ -75,3 +75,12 @@ nav.tabs button[aria-current="page"] { background: var(--accent); color: var(--a
 .daybar-axis span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
 .daybar-axis span:first-child { transform: translateX(0); }
 .daybar-axis span:last-child { transform: translateX(-100%); }
+.sleep-list { list-style: none; padding: 0; margin: 8px 0 0; }
+.sleep-list li {
+  padding: 8px 10px; margin: 4px 0;
+  border: 1px solid var(--line); border-radius: 8px;
+  background: var(--bg);
+  cursor: pointer; min-height: 44px;
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+}
+.sleep-list li strong { font-weight: 600; }
