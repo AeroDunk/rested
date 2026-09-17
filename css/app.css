@@ -62,9 +62,16 @@ nav.tabs button[aria-current="page"] { background: var(--accent); color: var(--a
 [hidden] { display: none !important; }
 
 .daybar {
-  position: relative; height: 22px; margin: 10px 0;
+  position: relative; height: 22px; margin: 10px 0 2px;
   background: var(--bg); border: 1px solid var(--line); border-radius: 6px; overflow: hidden;
 }
 .daybar .seg { position: absolute; top: 0; bottom: 0; }
 .seg-nap { background: var(--accent); opacity: 0.75; }
 .seg-night { background: var(--tier-strong); opacity: 0.6; }
+.daybar-axis {
+  position: relative; height: 14px; margin-bottom: 8px;
+  font-size: 0.7rem; color: var(--muted);
+}
+.daybar-axis span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+.daybar-axis span:first-child { transform: translateX(0); }
+.daybar-axis span:last-child { transform: translateX(-100%); }

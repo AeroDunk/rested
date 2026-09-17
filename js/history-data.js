@@ -47,6 +47,7 @@ export function dayBarSegments(daySleeps, dayKey) {
       const b = Math.min(new Date(s.endedAt), end);
       if (b <= a) return null;
       return {
+        id: s.id,
         leftPct: ((a - start) / span) * 100,
         widthPct: ((b - a) / span) * 100,
         type: s.type,

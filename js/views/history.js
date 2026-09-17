@@ -1,8 +1,9 @@
 import { getState, navigate } from '../app.js';
 import { groupByDay, dayBarSegments } from '../history-data.js';
-import { createMilestone } from '../model.js';
+import { createMilestone, active } from '../model.js';
 import { put } from '../store.js';
 import { tabs } from './tabs.js';
+import { formatTime } from '../format.js';
 
 const MILESTONE_LABELS = {
   sitting: 'Sitting', crawling: 'Crawling', pullingToStand: 'Pulling to stand',
@@ -23,9 +24,22 @@ export async function render(container) {
       <div class="card">
         <strong>${d.dayKey}</strong>
         <div class="daybar" role="img" aria-label="Sleep across the day">
-          ${dayBarSegments(d.sleeps, d.dayKey).map((g) =>
-            `<span class="seg seg-${g.type}" style="left:${g.leftPct}%;width:${g.widthPct}%"></span>`
-          ).join('')}
+          ${dayBarSegments(d.sleeps, d.dayKey).map((g) => {
+            const src = active(d.sleeps).find((s) => s.id === g.id);
+            const label = src
+              ? `${src.type === 'nap' ? 'Nap' : 'Night'} ${formatTime(new Date(src.startedAt))}${
+                  src.endedAt ? ' – ' + formatTime(new Date(src.endedAt)) : ''}`
+              : '';
+            return `<span class="seg seg-${g.type}" style="left:${g.leftPct}%;width:${g.widthPct}%"`
+              + ` title="${label}"></span>`;
+          }).join('')}
+        </div>
+        <div class="daybar-axis" aria-hidden="true">
+          <span style="left:0%">12a</span>
+          <span style="left:25%">6a</span>
+          <span style="left:50%">12p</span>
+          <span style="left:75%">6p</span>
+          <span style="left:100%">12a</span>
         </div>
         <div class="muted">Day ${hm(d.dayMin)} · Night ${hm(d.nightMin)}</div>
         ${d.milestones.map((m) =>
