@@ -32,8 +32,15 @@ export async function render(container) {
     </div>
 
     <div class="card"><h2>Your data</h2>
-      <p class="muted">Everything is stored on this phone only.</p>
-      <button class="btn secondary" id="export">Export as JSON</button>
+      <p class="muted">Everything is stored on this phone only. Export sends
+        a JSON snapshot of every logged sleep, waking, milestone, and setting.</p>
+      <button class="btn secondary" id="share">Share (Messages, email, …)</button>
+      <button class="btn secondary" id="copy">Copy to clipboard</button>
+      <button class="btn secondary" id="show-json">Show as text</button>
+      <p id="export-status" class="muted" hidden></p>
+    </div>
+
+    <div class="card"><h2>Danger zone</h2>
       <button class="btn secondary" id="reset">Delete everything</button>
     </div>
 
@@ -41,16 +48,66 @@ export async function render(container) {
       His cues matter more than any suggestion here, and anything that worries you
       belongs with your pediatrician.</p></div>`;
 
-  container.querySelector('#export').addEventListener('click', async () => {
+  async function buildDump() {
     const dump = {};
     for (const st of STORES) dump[st] = await getAll(s.db, st);
-    const text = JSON.stringify(dump, null, 2);
+    return JSON.stringify(dump, null, 2);
+  }
+
+  function setStatus(msg) {
+    const el = container.querySelector('#export-status');
+    el.textContent = msg;
+    el.hidden = false;
+  }
+
+  container.querySelector('#share').addEventListener('click', async () => {
+    const text = await buildDump();
+    if (!navigator.share) {
+      setStatus('Sharing isn\'t supported here — try Copy to clipboard or Show as text.');
+      return;
+    }
+    try {
+      const file = new File([text], `rested-${new Date().toISOString().slice(0, 10)}.json`,
+        { type: 'application/json' });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: 'Rested export' });
+      } else {
+        await navigator.share({ text, title: 'Rested export' });
+      }
+      setStatus('Shared.');
+    } catch (e) {
+      if (e.name !== 'AbortError') setStatus('Share failed — try Copy to clipboard.');
+    }
+  });
+
+  container.querySelector('#copy').addEventListener('click', async () => {
+    const text = await buildDump();
+    if (!navigator.clipboard || !navigator.clipboard.writeText) {
+      setStatus('Clipboard isn\'t available — try Show as text.');
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(text);
+      setStatus('Copied. Paste it anywhere.');
+    } catch {
+      setStatus('Copy failed — try Show as text.');
+    }
+  });
+
+  container.querySelector('#show-json').addEventListener('click', async () => {
+    const text = await buildDump();
+    const existing = container.querySelector('#export-textarea');
+    if (existing) existing.remove();
     const box = document.createElement('textarea');
+    box.id = 'export-textarea';
     box.value = text;
     box.rows = 12;
+    box.readOnly = true;
     box.style.width = '100%';
-    container.appendChild(box);
-    box.select();
+    container.querySelector('#show-json').insertAdjacentElement('afterend', box);
+    box.focus();
+    box.setSelectionRange(0, box.value.length);
+    setStatus('Text shown below — long-press and choose Select All, then Copy.');
   });
 
   container.querySelector('#reset').addEventListener('click', async () => {
