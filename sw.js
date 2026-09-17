@@ -1,4 +1,4 @@
-const CACHE = 'rested-v12';
+const CACHE = 'rested-v13';
 const SHELL = [
   './', './index.html', './css/app.css', './manifest.webmanifest',
   './js/app.js', './js/age.js', './js/sleep-data.js', './js/model.js',
@@ -19,6 +19,16 @@ self.addEventListener('activate', (e) => {
   e.waitUntil(caches.keys()
     .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
     .then(() => self.clients.claim()));
+});
+
+self.addEventListener('message', (e) => {
+  if (!e.data) return;
+  if (e.data.type === 'get-version' && e.ports[0]) {
+    e.ports[0].postMessage({ version: CACHE });
+  }
+  if (e.data.type === 'skip-waiting') {
+    self.skipWaiting();
+  }
 });
 
 self.addEventListener('fetch', (e) => {

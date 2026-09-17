@@ -1,4 +1,4 @@
-import { getState, navigate } from '../app.js';
+import { getState, navigate, checkForUpdate, getCacheVersion } from '../app.js';
 import { put, clearAll, getAll, STORES } from '../store.js';
 import { tabs } from './tabs.js';
 
@@ -38,6 +38,12 @@ export async function render(container) {
       <button class="btn secondary" id="copy">Copy to clipboard</button>
       <button class="btn secondary" id="show-json">Show as text</button>
       <p id="export-status" class="muted" hidden></p>
+    </div>
+
+    <div class="card"><h2>App version</h2>
+      <p class="muted">Running: <span id="version">checking…</span></p>
+      <button class="btn secondary" id="update">Check for updates</button>
+      <p id="update-status" class="muted" hidden></p>
     </div>
 
     <div class="card"><h2>Danger zone</h2>
@@ -125,4 +131,16 @@ export async function render(container) {
 
   container.querySelectorAll('nav.tabs button').forEach((b) =>
     b.addEventListener('click', () => navigate(b.dataset.route)));
+
+  getCacheVersion().then((v) => {
+    container.querySelector('#version').textContent = v ?? 'unknown (no service worker)';
+  });
+
+  container.querySelector('#update').addEventListener('click', async () => {
+    const status = container.querySelector('#update-status');
+    status.hidden = false;
+    status.textContent = 'Checking…';
+    const result = await checkForUpdate();
+    status.textContent = result.message;
+  });
 }

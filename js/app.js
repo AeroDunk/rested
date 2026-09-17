@@ -49,6 +49,42 @@ export async function mount(el) {
   await reload();
   await draw();
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js').catch(() => {});
+    let refreshing = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (refreshing) return;
+      refreshing = true;
+      location.reload();
+    });
+    navigator.serviceWorker.register('sw.js').then((reg) => {
+      reg.update().catch(() => {});
+      setInterval(() => reg.update().catch(() => {}), 15 * 60 * 1000);
+    }).catch(() => {});
   }
+}
+
+export async function checkForUpdate() {
+  if (!('serviceWorker' in navigator)) {
+    return { ok: false, message: 'Service workers aren\'t supported here.' };
+  }
+  const reg = await navigator.serviceWorker.getRegistration();
+  if (!reg) return { ok: false, message: 'No service worker registered yet.' };
+  await reg.update();
+  if (reg.waiting) {
+    reg.waiting.postMessage({ type: 'skip-waiting' });
+    return { ok: true, message: 'Update ready — reloading.' };
+  }
+  if (reg.installing) return { ok: true, message: 'Update downloading — reload in a moment.' };
+  return { ok: true, message: 'Already up to date.' };
+}
+
+export async function getCacheVersion() {
+  if (!('serviceWorker' in navigator)) return null;
+  const controller = navigator.serviceWorker.controller;
+  if (!controller) return null;
+  return new Promise((resolve) => {
+    const ch = new MessageChannel();
+    const timeout = setTimeout(() => resolve(null), 1500);
+    ch.port1.onmessage = (e) => { clearTimeout(timeout); resolve(e.data?.version ?? null); };
+    controller.postMessage({ type: 'get-version' }, [ch.port2]);
+  });
 }
