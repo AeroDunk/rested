@@ -67,11 +67,13 @@ export async function render(container) {
   }
 
   container.querySelector('#share').addEventListener('click', async () => {
+    setStatus('Preparing export…');
     const text = await buildDump();
     if (!navigator.share) {
-      setStatus('Sharing isn\'t supported here — try Copy to clipboard or Show as text.');
+      setStatus('Share isn\'t available in this browser. Use Copy to clipboard instead.');
       return;
     }
+    setStatus('Opening share sheet — pick an app…');
     try {
       const file = new File([text], `rested-${new Date().toISOString().slice(0, 10)}.json`,
         { type: 'application/json' });
@@ -82,7 +84,11 @@ export async function render(container) {
       }
       setStatus('Shared.');
     } catch (e) {
-      if (e.name !== 'AbortError') setStatus('Share failed — try Copy to clipboard.');
+      if (e.name === 'AbortError') {
+        setStatus('Share cancelled.');
+      } else {
+        setStatus(`Share failed (${e.name || 'unknown'}: ${e.message || 'no details'}). Use Copy to clipboard.`);
+      }
     }
   });
 
