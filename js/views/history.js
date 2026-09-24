@@ -50,6 +50,12 @@ export async function render(container) {
           <ul class="sleep-list">
             ${primarySleeps.map((x) => {
               const started = formatTime(new Date(x.startedAt));
+              if (x.skipped) {
+                return `<li data-edit="${x.id}">
+                  <strong>${x.type === 'nap' ? 'Nap' : 'Night'}</strong>
+                  <span class="muted">${started} · skipped</span>
+                </li>`;
+              }
               const ended = x.endedAt ? formatTime(new Date(x.endedAt)) : 'in progress';
               const dur = x.endedAt ? ` <span class="muted">(${durationMinutes(x)} min)</span>` : '';
               return `<li data-edit="${x.id}">

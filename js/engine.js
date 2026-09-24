@@ -36,7 +36,9 @@ export function suggest({ now, bandKey, sleeps = [], adjustments = [] }) {
   if (!band) return unknown();
 
   const all = active(sleeps);
-  const open = all.find((s) => !s.endedAt);
+  // A skipped-nap marker has no endedAt but is not "in progress" — it's a
+  // deliberate placeholder saying that nap slot was skipped.
+  const open = all.find((s) => !s.endedAt && !s.skipped);
   if (open) {
     return {
       kind: 'in-progress', windowStart: null, windowEnd: null, targetDuration: null,
@@ -46,9 +48,11 @@ export function suggest({ now, bandKey, sleeps = [], adjustments = [] }) {
 
   const done = [...all].sort((a, b) => new Date(a.startedAt) - new Date(b.startedAt));
   const lastNight = [...done].reverse().find((s) => s.type === 'night');
-  const last = done[done.length - 1];
+  // Skip skipped-nap markers when finding the last completed sleep boundary —
+  // they have no end time and would break wake-window arithmetic.
+  const lastCompleted = [...done].reverse().find((s) => s.endedAt);
   const wakeTime = lastNight ? new Date(lastNight.endedAt) : null;
-  const lastEnd = last ? new Date(last.endedAt) : null;
+  const lastEnd = lastCompleted ? new Date(lastCompleted.endedAt) : null;
 
   const todayKey = localDayKey(now);
   const napsToday = done.filter(

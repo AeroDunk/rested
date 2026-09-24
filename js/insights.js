@@ -26,7 +26,8 @@ export function rollingAverages(sleeps, days = 14, now = new Date()) {
     avgTotalMin: Math.round(sum((d) => d.totalMin) / n),
     avgDayMin: Math.round(sum((d) => d.dayMin) / n),
     avgNightMin: Math.round(sum((d) => d.nightMin) / n),
-    avgNapCount: Math.round((sum((d) => d.sleeps.filter((s) => s.type === 'nap').length) / n) * 10) / 10,
+    avgNapCount: Math.round((sum((d) =>
+      d.sleeps.filter((s) => s.type === 'nap' && !s.skipped).length) / n) * 10) / 10,
     sampleDays: n,
   };
 }

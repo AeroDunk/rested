@@ -5,6 +5,7 @@ import { createSleep } from '../js/model.js';
 const D = (s) => new Date(s);
 const night = (start, end) => createSleep({ type: 'night', startedAt: start, endedAt: end });
 const nap = (start, end) => createSleep({ type: 'nap', startedAt: start, endedAt: end });
+const skippedNap = (start) => createSleep({ type: 'nap', startedAt: start, skipped: true });
 
 test('atClock builds a local time on the reference day', () => {
   const r = atClock(new Date(2026, 8, 14, 3, 0, 0), '09:30');
@@ -162,4 +163,53 @@ test('a night sleep spanning midnight is attributed to the correct day', () => {
 test('an unknown band key degrades gracefully', () => {
   const s = suggest({ now: D('2026-09-14T08:00:00'), bandKey: null, sleeps: [] });
   eq(s.kind, 'unknown');
+});
+
+test('a skipped nap is not treated as in-progress', () => {
+  const s = suggest({
+    now: D('2026-09-14T11:00:00'), bandKey: '8-9',
+    sleeps: [
+      night('2026-09-13T19:30:00', '2026-09-14T07:00:00'),
+      skippedNap('2026-09-14T09:30:00'),
+    ],
+  });
+  ok(s.kind !== 'in-progress', `expected not in-progress, got ${s.kind}`);
+});
+
+test('a skipped nap counts toward nap index', () => {
+  const s = suggest({
+    now: D('2026-09-14T11:00:00'), bandKey: '8-9',
+    sleeps: [
+      night('2026-09-13T19:30:00', '2026-09-14T07:00:00'),
+      skippedNap('2026-09-14T09:30:00'),
+    ],
+  });
+  eq(s.napIndex, 1);
+  eq(s.kind, 'nap');
+});
+
+test('after one real nap and one skipped nap, the next sleep is bedtime', () => {
+  const s = suggest({
+    now: D('2026-09-14T16:00:00'), bandKey: '8-9',
+    sleeps: [
+      night('2026-09-13T19:30:00', '2026-09-14T07:00:00'),
+      nap('2026-09-14T09:30:00', '2026-09-14T10:45:00'),
+      skippedNap('2026-09-14T14:00:00'),
+    ],
+  });
+  eq(s.kind, 'bedtime');
+});
+
+test('skipped naps do not break wake-window arithmetic for the next suggestion', () => {
+  const s = suggest({
+    now: D('2026-09-14T11:00:00'), bandKey: '8-9',
+    sleeps: [
+      night('2026-09-13T19:30:00', '2026-09-14T07:00:00'),
+      skippedNap('2026-09-14T09:30:00'),
+    ],
+  });
+  // The wake-window anchor should still work off the previous completed sleep
+  // (the night sleep's endedAt), not off the skipped nap which has no endedAt.
+  ok(s.windowStart instanceof Date, 'expected a windowStart Date');
+  ok(!isNaN(s.windowStart.getTime()), 'expected windowStart to be valid');
 });

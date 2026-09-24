@@ -48,7 +48,7 @@ export async function render(container) {
       <span class="tier tier-${f.tier}">${tierLabel(f.tier)}</span>
       <p>${f.text}</p>
     </div>`).join('');
-  const open = active(s.sleeps).find((x) => !x.endedAt);
+  const open = active(s.sleeps).find((x) => !x.endedAt && !x.skipped);
 
   const todayKey = localDayKey(now);
   const todays = active(s.sleeps)
@@ -68,19 +68,29 @@ export async function render(container) {
     <p class="muted">Edit the time above if you're logging this after the fact.</p>
     <button class="btn" id="primary">${primaryLabel(open, sug)}</button>
     ${open ? '<button class="btn secondary" id="cancel">Cancel — that was a mistake</button>' : ''}
+    ${!open && sug.kind === 'nap'
+      ? '<button class="btn secondary" id="skip">Skip this nap</button>' : ''}
     <p id="action-err" class="muted" hidden></p>
     <h2>Today</h2>
     ${todays.length === 0 ? '<p class="muted">Nothing logged yet.</p>' : ''}
-    ${todays.map((x) => `<div class="card" data-edit="${x.id}">
+    ${todays.map((x) => {
+      const timeText = x.skipped
+        ? formatTime(new Date(x.startedAt)) + ' · skipped'
+        : formatTime(new Date(x.startedAt)) + (x.endedAt
+            ? ' – ' + formatTime(new Date(x.endedAt))
+            : ' – in progress');
+      const dur = x.endedAt && !x.skipped
+        ? `<div class="muted">${durationMinutes(x)} min</div>` : '';
+      return `<div class="card" data-edit="${x.id}">
         <strong>${x.type === 'nap' ? 'Nap' : 'Night'}</strong>
-        <span class="muted">${formatTime(new Date(x.startedAt))}${
-          x.endedAt ? ' – ' + formatTime(new Date(x.endedAt)) : ' – in progress'}</span>
-        ${x.endedAt ? `<div class="muted">${durationMinutes(x)} min</div>` : ''}
-      </div>`).join('')}`;
+        <span class="muted">${timeText}</span>
+        ${dur}
+      </div>`;
+    }).join('')}`;
 
   container.querySelector('#primary').addEventListener('click', async () => {
     const st = getState();
-    const current = active(st.sleeps).find((x) => !x.endedAt);
+    const current = active(st.sleeps).find((x) => !x.endedAt && !x.skipped);
     const timeInput = container.querySelector('#action-time');
     const chosen = timeInput && timeInput.value
       ? fromLocalInputValue(timeInput.value)
@@ -110,10 +120,26 @@ export async function render(container) {
   if (cancelBtn) {
     cancelBtn.addEventListener('click', async () => {
       const st = getState();
-      const current = active(st.sleeps).find((x) => !x.endedAt);
+      const current = active(st.sleeps).find((x) => !x.endedAt && !x.skipped);
       if (!current) return;
       if (!confirm('Delete this in-progress sleep? This can\'t be undone.')) return;
       await put(st.db, 'sleeps', softDelete(current));
+      location.reload();
+    });
+  }
+
+  const skipBtn = container.querySelector('#skip');
+  if (skipBtn) {
+    skipBtn.addEventListener('click', async () => {
+      const st = getState();
+      if (!confirm('Skip this nap? The app will move on to the next sleep suggestion.')) return;
+      const timeInput = container.querySelector('#action-time');
+      const at = timeInput && timeInput.value
+        ? fromLocalInputValue(timeInput.value)
+        : new Date();
+      await put(st.db, 'sleeps', createSleep({
+        type: 'nap', startedAt: at.toISOString(), skipped: true,
+      }));
       location.reload();
     });
   }

@@ -21,10 +21,14 @@ export function createChild({ name, dob, gestationalWeeksAtBirth = null }) {
 
 export function createSleep({
   type, startedAt, endedAt = null, note = null, mood = null, routineFollowed = null,
+  skipped = false,
 }) {
   if (!SLEEP_TYPES.includes(type)) throw new Error(`unknown sleep type: ${type}`);
   if (!startedAt) throw new Error('startedAt is required');
-  return { id: newId(), type, startedAt, endedAt, note, mood, routineFollowed, ...stamps() };
+  return {
+    id: newId(), type, startedAt, endedAt, note, mood, routineFollowed,
+    skipped, ...stamps(),
+  };
 }
 
 export function createWaking({ sleepId, wokeAt, backAsleepAt = null, note = null }) {

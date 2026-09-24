@@ -12,8 +12,14 @@ export async function render(container, { sleepId }) {
     .sort((a, b) => new Date(a.wokeAt) - new Date(b.wokeAt));
 
   container.innerHTML = `
-    <h1>${sleep.type === 'nap' ? 'Nap' : 'Night sleep'}</h1>
+    <h1>${sleep.type === 'nap' ? 'Nap' : 'Night sleep'}${sleep.skipped ? ' — skipped' : ''}</h1>
     <form id="ed">
+      ${sleep.type === 'nap' ? `
+      <label class="field"><span>
+        <input type="checkbox" name="skipped"${sleep.skipped ? ' checked' : ''}>
+        This nap was skipped</span></label>
+      <p class="muted">A skipped nap counts as a nap slot for scheduling — the app
+        moves on to the next suggestion — but doesn't contribute any minutes.</p>` : ''}
       <label class="field"><span>Started</span>
         <input type="datetime-local" name="startedAt"
           value="${toLocalInputValue(new Date(sleep.startedAt))}" required></label>
@@ -68,7 +74,8 @@ export async function render(container, { sleepId }) {
     const ended = endedRaw ? fromLocalInputValue(endedRaw) : null;
     const err = container.querySelector('#err');
 
-    if (ended && ended <= started) {
+    const skipped = sleep.type === 'nap' && f.get('skipped') === 'on';
+    if (ended && !skipped && ended <= started) {
       err.hidden = false;
       err.textContent = 'The end time needs to be after the start time.';
       return;
@@ -76,10 +83,12 @@ export async function render(container, { sleepId }) {
     await put(s.db, 'sleeps', {
       ...sleep,
       startedAt: started.toISOString(),
-      endedAt: ended ? ended.toISOString() : null,
+      // A skipped nap has no meaningful end time — clear it either way.
+      endedAt: skipped ? null : (ended ? ended.toISOString() : null),
       mood: f.get('mood') || null,
       note: f.get('note').trim() || null,
       routineFollowed: sleep.type === 'night' ? f.get('routineFollowed') === 'on' : null,
+      skipped,
       updatedAt: new Date().toISOString(),
     });
     location.reload();

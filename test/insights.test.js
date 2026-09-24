@@ -7,6 +7,7 @@ import { createSleep } from '../js/model.js';
 const nap = (s, e) => createSleep({ type: 'nap', startedAt: s, endedAt: e });
 const night = (s, e, routine = null) =>
   ({ ...createSleep({ type: 'night', startedAt: s, endedAt: e }), routineFollowed: routine });
+const skippedNap = (s) => createSleep({ type: 'nap', startedAt: s, skipped: true });
 
 const NOW = new Date('2026-09-14T20:00:00');
 
@@ -82,4 +83,21 @@ test('expectation content carries valid tiers and never uses banned words', () =
       ok(!t.includes('overtired'), `banned word in ${key}`);
     }
   }
+});
+
+test('avgNapCount excludes skipped naps', () => {
+  const r = rollingAverages([
+    nap('2026-09-14T09:30:00', '2026-09-14T10:30:00'),
+    skippedNap('2026-09-14T14:00:00'),
+  ], 14, NOW);
+  // Two 'nap' records but one is skipped — average should be 1.0, not 2.0
+  eq(r.avgNapCount, 1);
+});
+
+test('a skipped nap contributes no minutes to day totals', () => {
+  const r = rollingAverages([
+    nap('2026-09-14T09:30:00', '2026-09-14T10:30:00'),
+    skippedNap('2026-09-14T14:00:00'),
+  ], 14, NOW);
+  eq(r.avgDayMin, 60);
 });
