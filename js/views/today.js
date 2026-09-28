@@ -58,6 +58,18 @@ export async function render(container) {
   const actionLabel = open ? 'Ended at' : 'Started at';
   const actionTimeValue = toLocalInputValue(now);
 
+  // Sensible defaults for the backfill form: in the morning, prefill for
+  // last night's sleep; otherwise prefill for a nap a couple hours ago.
+  const isMorning = now.getHours() < 12;
+  const backfillType = isMorning ? 'night' : 'nap';
+  const nightStart = new Date(now); nightStart.setDate(nightStart.getDate() - 1);
+  nightStart.setHours(21, 0, 0, 0);
+  const morningWake = new Date(now); morningWake.setHours(7, 0, 0, 0);
+  const napStart = new Date(now.getTime() - 90 * 60000);
+  const napEnd = new Date(now.getTime() - 30 * 60000);
+  const backfillStart = toLocalInputValue(isMorning ? nightStart : napStart);
+  const backfillEnd = toLocalInputValue(isMorning ? morningWake : napEnd);
+
   container.innerHTML = `
     ${tabs('today')}
     <h1>${s.child.name}</h1>
@@ -71,6 +83,24 @@ export async function render(container) {
     ${!open && sug.kind === 'nap'
       ? '<button class="btn secondary" id="skip">Skip this nap</button>' : ''}
     <p id="action-err" class="muted" hidden></p>
+    <details class="past-sleep">
+      <summary>Log a past sleep</summary>
+      <p class="muted">For a sleep you forgot to log in real time.
+        Enter both times below and save.</p>
+      <form id="past-sleep-form">
+        <label class="field"><span>Type</span>
+          <select name="type">
+            <option value="nap"${backfillType === 'nap' ? ' selected' : ''}>Nap</option>
+            <option value="night"${backfillType === 'night' ? ' selected' : ''}>Night</option>
+          </select></label>
+        <label class="field"><span>Started</span>
+          <input type="datetime-local" name="startedAt" value="${backfillStart}" required></label>
+        <label class="field"><span>Ended</span>
+          <input type="datetime-local" name="endedAt" value="${backfillEnd}" required></label>
+        <p id="past-err" class="muted" hidden></p>
+        <button class="btn secondary" type="submit">Save past sleep</button>
+      </form>
+    </details>
     <h2>Today</h2>
     ${todays.length === 0 ? '<p class="muted">Nothing logged yet.</p>' : ''}
     ${todays.map((x) => {
@@ -124,6 +154,29 @@ export async function render(container) {
       if (!current) return;
       if (!confirm('Delete this in-progress sleep? This can\'t be undone.')) return;
       await put(st.db, 'sleeps', softDelete(current));
+      location.reload();
+    });
+  }
+
+  const pastForm = container.querySelector('#past-sleep-form');
+  if (pastForm) {
+    pastForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const f = new FormData(e.target);
+      const startedAt = fromLocalInputValue(f.get('startedAt'));
+      const endedAt = fromLocalInputValue(f.get('endedAt'));
+      const err = container.querySelector('#past-err');
+      if (endedAt <= startedAt) {
+        err.hidden = false;
+        err.textContent = 'End time must be after start time.';
+        return;
+      }
+      const st = getState();
+      await put(st.db, 'sleeps', createSleep({
+        type: f.get('type'),
+        startedAt: startedAt.toISOString(),
+        endedAt: endedAt.toISOString(),
+      }));
       location.reload();
     });
   }

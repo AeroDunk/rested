@@ -84,3 +84,15 @@ nav.tabs button[aria-current="page"] { background: var(--accent); color: var(--a
   display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
 }
 .sleep-list li strong { font-weight: 600; }
+.past-sleep {
+  margin: 12px 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  background: var(--surface);
+}
+.past-sleep summary {
+  cursor: pointer; min-height: 44px; display: flex; align-items: center;
+  font-weight: 600; color: var(--accent);
+}
+.past-sleep[open] summary { margin-bottom: 4px; }
